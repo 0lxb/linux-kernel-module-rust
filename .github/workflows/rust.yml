@@ -1,0 +1,45 @@
+name: Rust
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-18.04
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Prepare
+      run: |
+        sudo apt-get -y update
+        sudo apt-get -y install llvm-9 clang-9 linux-headers-"$(uname -r)"
+        sudo ln -s /usr/bin/llvm-config-9 /usr/bin/llvm-config
+        sudo apt-get -y install bison build-essential cmake flex git libedit-dev
+        sudo apt-get -y install curl
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source $HOME/.cargo/env
+        rustup toolchain add nightly
+        rustup default nightly
+        rustup component add llvm-tools-preview
+        rustup component add --toolchain=nightly rust-src rustfmt
+        cargo install cargo-binutils
+
+    - name: Run tests
+      run: |
+        sudo sed -i /CONFIG_CC_HAS_ASM_INLINE/d /usr/src/linux-headers-"$(uname -r)"/include/generated/autoconf.h
+        cd hello-world
+        make
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@master
+      with:
+        name: helloworld.ko
+        path: hello-world/helloworld.ko
